@@ -1,8 +1,0 @@
-2018-04-16 16:24:23 reliableudp.go:13 DEBUG this=0xc420084000
-2018-04-16 16:24:23 udpsession.go:93 DEBUG u.recv=0xc420084000
-2018-04-16 16:24:23 udpsession.go:29 DEBUG ListUDP OK. IP=0.0.0.0 PORT:8008
-2018-04-16 16:24:32 udpsession.go:64 DEBUG recv=0xc420084000 rLen=12 addr=10.155.48.42:44270
-2018-04-16 16:24:32 reliableudp.go:28 DEBUG Recv data=12 byte=1234vv11112
-
-2018-04-16 16:24:32 encrypt.go:36 ERROR Invalid packet value
-2018-04-16 16:24:32 reliableudp.go:31 ERROR Invalid packet

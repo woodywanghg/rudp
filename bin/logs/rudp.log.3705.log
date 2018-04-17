@@ -1,9 +1,0 @@
-2018-04-16 15:54:03 reliableudp.go:13 DEBUG this=0xc420084000
-2018-04-16 15:54:03 udpsession.go:93 DEBUG u.recv=0xc420084000
-2018-04-16 15:54:03 udpsession.go:29 DEBUG ListUDP OK. IP=0.0.0.0 PORT:8008
-2018-04-16 15:54:14 udpsession.go:64 DEBUG recv=0xc420084000 rLen=9 addr=10.155.48.42:49520
-2018-04-16 15:54:14 reliableudp.go:28 DEBUG Recv data=9 byte=111vv222
-
-2018-04-16 15:54:29 udpsession.go:64 DEBUG recv=0xc420084000 rLen=9 addr=10.155.48.42:49520
-2018-04-16 15:54:29 reliableudp.go:28 DEBUG Recv data=9 byte=1112e333
-

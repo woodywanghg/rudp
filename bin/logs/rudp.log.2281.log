@@ -1,3 +1,0 @@
-2018-04-16 14:56:46 reliableudp.go:12 DEBUG this=0xc4200560e0
-2018-04-16 14:56:46 udpsession.go:91 DEBUG u.recv=0xc4200560e0
-2018-04-16 14:56:46 udpsession.go:27 DEBUG ListUDP OK.
