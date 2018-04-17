@@ -1,0 +1,9 @@
+2018-04-16 16:35:04 reliableudp.go:13 DEBUG this=0xc420086000
+2018-04-16 16:35:04 udpsession.go:93 DEBUG u.recv=0xc420086000
+2018-04-16 16:35:04 udpsession.go:29 DEBUG ListUDP OK. IP=0.0.0.0 PORT:8008
+2018-04-16 16:35:10 udpsession.go:64 DEBUG recv=0xc420086000 rLen=10 addr=10.155.48.42:45435
+2018-04-16 16:35:10 reliableudp.go:28 DEBUG Recv data=10 byte=111333222
+
+2018-04-16 16:35:10 encrypt.go:35 DEBUG preSub=[49 49 49] endSub=[50 50 50 10] packetLen=10 endLen=4
+2018-04-16 16:35:10 encrypt.go:49 DEBUG GetPacketData data:[51 51 51]
+2018-04-16 16:35:10 reliableudp.go:39 DEBUG Send ip=10.155.48.42 port=45435 packetData=[51 51 51]

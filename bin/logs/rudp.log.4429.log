@@ -1,0 +1,3 @@
+2018-04-16 16:24:19 reliableudp.go:13 DEBUG this=0xc420084000
+2018-04-16 16:24:19 udpsession.go:93 DEBUG u.recv=0xc420084000
+2018-04-16 16:24:19 udpsession.go:29 DEBUG ListUDP OK. IP=0.0.0.0 PORT:8008

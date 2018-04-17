@@ -1,0 +1,38 @@
+syntax = "proto2";
+
+package rudpmsg;
+
+enum RudpMsgType {
+	MSG_RUDP_DATA    = 1;
+	MSG_RUDP_ACK     = 2;
+	MSG_RUDP_REG     = 3;
+	MSG_RUDP_REG_RS  = 4;
+}
+
+message RudpMessage {
+	required RudpMsgType type = 1;
+	required bytes data       = 2;
+}
+
+message RudpMsgReg {
+	required int64 seq  = 1;
+	required int64 ssrc = 2;
+}
+
+message RudpMsgRegRs {
+	required int64 seq  = 1;
+	required int64 ssrc = 2;
+}
+
+message RudpMsgData {
+	required int64 seq  = 1;
+	required int64 ssrc = 2;
+	required bytes data = 3;
+	
+}
+
+message RudpMsgAck {
+	required int64 seq  = 1;
+	required int64 ssrc = 2;
+	required bytes data = 3;
+}

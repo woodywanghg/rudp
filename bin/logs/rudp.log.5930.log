@@ -1,0 +1,9 @@
+2018-04-16 19:17:40 reliableudp.go:13 DEBUG this=0xc420084000
+2018-04-16 19:17:40 udpsession.go:94 DEBUG u.recv=0xc420084000
+2018-04-16 19:17:40 udpsession.go:29 DEBUG ListUDP OK. IP=0.0.0.0 PORT:8008
+2018-04-16 19:17:41 udpsendbuffer.go:42 DEBUG bufferList=[]
+2018-04-16 19:17:41 udpsession.go:80 DEBUG BufferList len=0 list=[]
+2018-04-16 19:17:42 udpsendbuffer.go:42 DEBUG bufferList=[]
+2018-04-16 19:17:42 udpsession.go:80 DEBUG BufferList len=0 list=[]
+2018-04-16 19:17:43 udpsendbuffer.go:42 DEBUG bufferList=[]
+2018-04-16 19:17:43 udpsession.go:80 DEBUG BufferList len=0 list=[]
