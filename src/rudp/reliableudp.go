@@ -8,18 +8,15 @@ import "time"
 import "sync"
 
 type ReliableUdp struct {
-	encrypt    RudpEncrypt
-	udpSocket  udpSocket.UdpSocket
-	sessionMap map[int64]RecvBuff
-	sessionMap map[int64]SendBuff
-	lock       sync.Mutex
+	encrypt   RudpEncrypt
+	udpSocket udpsocket.UdpSocket
+	lock      sync.Mutex
 }
 
 func (r *ReliableUdp) Init(ip string, port int) error {
 
 	fclog.DEBUG("this=%p", r)
 	r.encrypt.Init()
-	r.sessionMap = make(map[int64]SessionBuff, 0)
 	r.udpSocket.SetUdpReceiver(r)
 
 	err := r.udpSocket.Listen(ip, port)
@@ -113,12 +110,9 @@ func (r *ReliableUdp) ProcessMsgRegRs(b []byte) {
 		return
 	}
 
-	ssrc := int64(*msgData.Ssrc)
-	var dataBuf SessionBuff
-	dataBuf.Init(ssrc)
+	//ssrc := int64(*msgData.Ssrc)
 
 	r.lock.Lock()
-	r.sessionMap[ssrc] = dataBuf
 	r.lock.Unlock()
 
 }
@@ -183,11 +177,7 @@ func (r *ReliableUdp) SendCreateSessionRs() {
 		return
 	}
 
-	var dataBuf SessionBuff
-	dataBuf.Init(ssrc)
-
 	r.lock.Lock()
-	r.sessionMap[ssrc] = dataBuf
 	r.lock.Unlock()
 
 	encryptData := r.encrypt.EncodePacket(packetData)
