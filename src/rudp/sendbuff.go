@@ -10,16 +10,14 @@ type SendBuffItem struct {
 }
 
 type SendBuff struct {
-	sessionId int64
-	seq       int64
-	seqMap    map[int64]SendBuffItem
-	lock      sync.Mutex
+	seq    int64
+	seqMap map[int64]SendBuffItem
+	lock   sync.Mutex
 }
 
-func (s *SendBuff) Init(sessionId int64) {
+func (s *SendBuff) Init() {
 	s.seq = 0
 	s.seqMap = make(map[int64]SendBuffItem, 100)
-	s.sessionId = sessionId
 }
 
 func (s *SendBuff) Insert(b []byte) {

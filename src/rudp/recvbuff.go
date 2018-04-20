@@ -8,18 +8,16 @@ type RecvBuffItem struct {
 }
 
 type RecvBuff struct {
-	sessionId int64
-	seq       int64
-	seqMap    map[int64]RecvBuffItem
-	nextSeq   int64
-	lock      sync.Mutex
+	seq     int64
+	seqMap  map[int64]RecvBuffItem
+	nextSeq int64
+	lock    sync.Mutex
 }
 
-func (s *RecvBuff) Init(sessionId int64) {
+func (s *RecvBuff) Init() {
 	s.seq = 0
 	s.nextSeq = 0
 	s.seqMap = make(map[int64]RecvBuffItem, 100)
-	s.sessionId = sessionId
 }
 
 func (s *RecvBuff) Insert(seq int64, b []byte) {

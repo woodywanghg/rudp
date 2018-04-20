@@ -16,23 +16,23 @@ message RudpMessage {
 
 message RudpMsgReg {
 	required int64 seq  = 1;
-	required int64 ssrc = 2;
+	required int64 sid = 2;
 }
 
 message RudpMsgRegRs {
 	required int64 seq  = 1;
-	required int64 ssrc = 2;
+	required int64 sid = 2;
 }
 
 message RudpMsgData {
 	required int64 seq  = 1;
-	required int64 ssrc = 2;
+	required int64 sid = 2;
 	required bytes data = 3;
 	
 }
 
 message RudpMsgAck {
 	required int64 seq  = 1;
-	required int64 ssrc = 2;
+	required int64 sid = 2;
 	required bytes data = 3;
 }
