@@ -45,3 +45,7 @@ func (s *UdpSession) Close() {
 func (u *UdpSession) SetUdpReceiver(recv udpsocket.UdpRecv) {
 	u.recv = recv
 }
+
+func (u *UdpSession) GetSocket() *udpsocket.UdpSocket {
+	return u.udpSocket
+}
