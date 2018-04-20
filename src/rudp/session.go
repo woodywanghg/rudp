@@ -1,5 +1,6 @@
 package rudp
 
+import "udp"
 import "github.com/woodywanghg/gofclog"
 
 type UdpSession struct {
@@ -7,12 +8,12 @@ type UdpSession struct {
 	recvBuf   RecvBuff
 	sessionId int64
 	dIp       string
-	dPort     int64
-	recv      UdpRecv
+	dPort     int
+	recv      udpsocket.UdpRecv
 	udpSocket *udpsocket.UdpSocket
 }
 
-func (s *UdpSession) Init(sessionId int64, dIp string, dPort int, bClient bool) bool {
+func (s *UdpSession) Init(sessionId int64, dIp string, dPort int) bool {
 	s.dIp = dIp
 	s.dPort = dPort
 	s.sessionId = sessionId
@@ -20,16 +21,18 @@ func (s *UdpSession) Init(sessionId int64, dIp string, dPort int, bClient bool) 
 	s.recvBuf.Init()
 	s.udpSocket = nil
 
-	if bClient {
-		s.udpSocket = new(udpsocket.UdpSocket)
-		err := s.udpSocket.DialUDP(dIp, dPort)
-		if err != nil {
-			fclog.ERROR("DIALUDP error! err=%s", err.Error())
-			return false
-		}
+	return true
+}
+
+func (s *UdpSession) DialUDP() error {
+	s.udpSocket = new(udpsocket.UdpSocket)
+	err := s.udpSocket.DialUDP(s.dIp, s.dPort)
+	if err != nil {
+		fclog.ERROR("DIALUDP error! err=%s", err.Error())
+		return err
 	}
 
-	return true
+	return nil
 }
 
 func (s *UdpSession) Close() {
@@ -39,10 +42,6 @@ func (s *UdpSession) Close() {
 	}
 }
 
-func (u *UdpSession) SetUdpReceiver(recv UdpRecv) {
-	u.recv = recv
-}
-
-func (u *UdpSession) UpdateSessionId(recv UdpRecv) {
+func (u *UdpSession) SetUdpReceiver(recv udpsocket.UdpRecv) {
 	u.recv = recv
 }

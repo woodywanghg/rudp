@@ -104,15 +104,17 @@ func (r *ReliableUdp) ProcessMsgReg(b []byte, ip string, port int) {
 		return
 	}
 
-	Sid := time.Now().UnixNano()
+	Sid := int64(*msgData.Sid)
+
+	var udpSession *UdpSession = new(UdpSession)
+	udpSession.SetUdpReceiver(r)
+	udpSession.Init(Sid, ip, port)
 
 	r.lock.Lock()
-	var udpSession *UdpSession = new(UdpSession)
-	udpSession.Init(Sid, ip, port, false)
 	r.sessionMap[Sid] = udpSession
 	r.lock.Unlock()
 
-	SendCreateSessionRs(Sid, ip, port)
+	r.SendCreateSessionRs(Sid, ip, port)
 
 }
 
@@ -135,35 +137,46 @@ func (r *ReliableUdp) ProcessMsgRegRs(b []byte, ip string, port int) {
 
 }
 
-func (r *ReliableUdp) CreateSession(ip string, port int) {
+func (r *ReliableUdp) CreateSession(ip string, port int) (int64, error) {
+
+	Sid := time.Now().UnixNano()
 
 	var msg rudpmsg.RudpMsgReg
 	msg.Seq = proto.Int64(0)
-	msg.Sid = proto.Int64(0)
+	msg.Sid = proto.Int64(Sid)
 
 	data, err := proto.Marshal(&msg)
 	if err != nil {
 		fclog.ERROR("Marshal message error!")
-		return
+		return 0, err
 	}
 
 	packetData := r.EncodePacket(data, rudpmsg.RudpMsgType_MSG_RUDP_REG)
 
 	if len(packetData) <= 0 {
 		fclog.ERROR("EncodePacket error!")
-		return
+		return 0, err
+	}
+
+	var udpSession *UdpSession = new(UdpSession)
+	udpSession.SetUdpReceiver(r)
+	udpSession.Init(Sid, ip, port)
+
+	err = udpSession.DialUDP()
+	if err != nil {
+		fclog.ERROR("Session dial erro!")
+		return 0, err
 	}
 
 	r.lock.Lock()
-	var udpSession *UdpSession = new(UdpSession)
-	udpSession.SetUdpReceiver(r)
-	udpSession.Init(Sid, ip, port, true)
 	r.sessionMap[Sid] = udpSession
 	r.lock.Unlock()
 
 	encryptData := r.encrypt.EncodePacket(packetData)
 
 	r.udpSocket.SendData(encryptData, r.udpSocket.GetIp(), r.udpSocket.GetPort())
+
+	return Sid, nil
 }
 
 func (r *ReliableUdp) EncodePacket(b []byte, msgType rudpmsg.RudpMsgType) []byte {
