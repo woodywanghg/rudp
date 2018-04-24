@@ -21,7 +21,8 @@ message RudpMsgReg {
 
 message RudpMsgRegRs {
 	required int64 seq  = 1;
-	required int64 sid = 2;
+	required int64 sid  = 2;
+	required int64 code = 3;
 }
 
 message RudpMsgData {

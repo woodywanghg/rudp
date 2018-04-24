@@ -123,15 +123,14 @@ func (r *ReliableUdp) ProcessMsgReg(b []byte, ip string, port int) {
 	seq := int64(*msgData.Sid)
 
 	r.lock.Lock()
-
 	_, exist := r.sessionMap[sid]
+	r.lock.Unlock()
+
 	if exist {
 		fclog.ERROR("Register error!, exist sessioin id! id=%d", sid)
-		r.lock.Unlock()
+		r.SendInvalidSessionRs(sid, ip, port)
 		return
 	}
-
-	r.lock.Unlock()
 
 	var udpSession *UdpSession = new(UdpSession)
 	udpSession.Init(sid, ip, port, &r.udpSocket, r)
@@ -151,14 +150,22 @@ func (r *ReliableUdp) ProcessMsgRegRs(b []byte, ip string, port int) {
 		return
 	}
 
-	Sid := int64(*msgData.Sid)
+	sid := int64(*msgData.Sid)
+	seq := int64(*msgData.Seq)
+	code := int64(*msgData.Code)
 
 	r.lock.Lock()
-	//udpSession, find :=r.sessionMap[Sid] = udpSession
-	r.lock.Unlock()
+	defer r.lock.Unlock()
 
-	fclog.DEBUG("Create udp session sessionid=%d", Sid)
+	udpSession, exist := r.sessionMap[sid]
+	if !exist {
+		fclog.ERROR("Receive invalid data sid=%d seq=%d", sid, seq)
+		return
+	}
 
+	udpSession.OnAck(seq)
+
+	fclog.DEBUG("Receive udp session response sessionid=%d code=%d", sid, code)
 }
 
 func (r *ReliableUdp) CreateSessionListen(ip string, port int) (int64, error) {
@@ -253,6 +260,7 @@ func (r *ReliableUdp) SendCreateSessionRs(udpSession *UdpSession) {
 	var msg rudpmsg.RudpMsgRegRs
 	msg.Seq = proto.Int64(0)
 	msg.Sid = proto.Int64(udpSession.GetSid())
+	msg.Code = proto.Int64(0)
 
 	data, err := proto.Marshal(&msg)
 	if err != nil {
@@ -269,6 +277,30 @@ func (r *ReliableUdp) SendCreateSessionRs(udpSession *UdpSession) {
 
 	encryptData := r.encrypt.EncodePacket(packetData)
 	udpSession.SendData(encryptData)
+}
+
+func (r *ReliableUdp) SendInvalidSessionRs(sid int64, ip string, port int) {
+
+	var msg rudpmsg.RudpMsgRegRs
+	msg.Seq = proto.Int64(0)
+	msg.Sid = proto.Int64(sid)
+	msg.Code = proto.Int64(10001)
+
+	data, err := proto.Marshal(&msg)
+	if err != nil {
+		fclog.ERROR("Marshal message error!")
+		return
+	}
+
+	packetData := r.EncodePacket(data, rudpmsg.RudpMsgType_MSG_RUDP_REG_RS)
+
+	if len(packetData) <= 0 {
+		fclog.ERROR("EncodePacket error!")
+		return
+	}
+
+	encryptData := r.encrypt.EncodePacket(packetData)
+	r.udpSocket.SendData(encryptData, ip, port)
 }
 
 func (r *ReliableUdp) sendAck(udpSession *UdpSession, seq int64) {
