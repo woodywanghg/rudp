@@ -34,5 +34,4 @@ message RudpMsgData {
 message RudpMsgAck {
 	required int64 seq  = 1;
 	required int64 sid = 2;
-	required bytes data = 3;
 }

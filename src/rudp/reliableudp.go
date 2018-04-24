@@ -6,6 +6,7 @@ import "github.com/golang/protobuf/proto"
 import "rudpproto"
 import "time"
 import "sync"
+import "errors"
 
 type ReliableUdp struct {
 	encrypt    RudpEncrypt
@@ -42,7 +43,7 @@ func (r *ReliableUdp) OnUdpRecv(b []byte, bLen int, ip string, port int) {
 
 	r.DecodePacket(packetData, ip, port)
 
-	r.udpSocket.SendData(packetData, ip, port)
+	//r.udpSocket.SendData(packetData, ip, port)
 
 	fclog.DEBUG("Send ip=%s port=%d packetData=%v", ip, port, packetData)
 }
@@ -93,6 +94,20 @@ func (r *ReliableUdp) ProcessMsgAck(b []byte, ip string, port int) {
 		fclog.ERROR("Unmarshal error! err=%s", err.Error())
 		return
 	}
+
+	sid := int64(*msgData.Sid)
+	seq := int64(*msgData.Seq)
+
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	udpSession, exist := r.sessionMap[sid]
+	if !exist {
+		fclog.ERROR("Receive invalid data sid=%d seq=%d", sid, seq)
+		return
+	}
+
+	udpSession.OnAck(seq)
 }
 
 func (r *ReliableUdp) ProcessMsgReg(b []byte, ip string, port int) {
@@ -104,17 +119,26 @@ func (r *ReliableUdp) ProcessMsgReg(b []byte, ip string, port int) {
 		return
 	}
 
-	Sid := int64(*msgData.Sid)
-
-	var udpSession *UdpSession = new(UdpSession)
-	udpSession.SetUdpReceiver(r)
-	udpSession.Init(Sid, ip, port)
+	sid := int64(*msgData.Sid)
+	seq := int64(*msgData.Sid)
 
 	r.lock.Lock()
-	r.sessionMap[Sid] = udpSession
+
+	_, exist := r.sessionMap[sid]
+	if exist {
+		fclog.ERROR("Register error!, exist sessioin id! id=%d", sid)
+		r.lock.Unlock()
+		return
+	}
+
 	r.lock.Unlock()
 
-	r.SendCreateSessionRs(Sid, ip, port)
+	var udpSession *UdpSession = new(UdpSession)
+	udpSession.Init(sid, ip, port, &r.udpSocket, r)
+	r.sessionMap[sid] = udpSession
+
+	r.sendAck(udpSession, seq)
+	r.SendCreateSessionRs(udpSession)
 
 }
 
@@ -159,8 +183,7 @@ func (r *ReliableUdp) CreateSessionListen(ip string, port int) (int64, error) {
 	}
 
 	var udpSession *UdpSession = new(UdpSession)
-	udpSession.SetUdpReceiver(r)
-	udpSession.Init(Sid, ip, port)
+	udpSession.Init(Sid, ip, port, &r.udpSocket, r)
 
 	r.lock.Lock()
 	r.sessionMap[Sid] = udpSession
@@ -168,7 +191,7 @@ func (r *ReliableUdp) CreateSessionListen(ip string, port int) (int64, error) {
 
 	encryptData := r.encrypt.EncodePacket(packetData)
 
-	r.udpSocket.SendData(encryptData, r.udpSocket.GetIp(), r.udpSocket.GetPort())
+	udpSession.SendData(encryptData)
 
 	return Sid, nil
 }
@@ -195,13 +218,8 @@ func (r *ReliableUdp) CreateSessionDial(ip string, port int) (int64, error) {
 	}
 
 	var udpSession *UdpSession = new(UdpSession)
-	udpSession.SetUdpReceiver(r)
-	udpSession.Init(Sid, ip, port)
-
-	err = udpSession.DialUDP()
-	if err != nil {
-		fclog.ERROR("Session dial erro!")
-		return 0, err
+	if !udpSession.Init(Sid, ip, port, nil, r) {
+		return 0, errors.New("udpsession ini error!")
 	}
 
 	r.lock.Lock()
@@ -210,7 +228,7 @@ func (r *ReliableUdp) CreateSessionDial(ip string, port int) (int64, error) {
 
 	encryptData := r.encrypt.EncodePacket(packetData)
 
-	udpSession.GetSocket().SendData(encryptData, r.udpSocket.GetIp(), r.udpSocket.GetPort())
+	udpSession.SendData(encryptData)
 
 	return Sid, nil
 }
@@ -230,11 +248,11 @@ func (r *ReliableUdp) EncodePacket(b []byte, msgType rudpmsg.RudpMsgType) []byte
 	return packetData
 }
 
-func (r *ReliableUdp) SendCreateSessionRs(sid int64, ip string, port int) {
+func (r *ReliableUdp) SendCreateSessionRs(udpSession *UdpSession) {
 
 	var msg rudpmsg.RudpMsgRegRs
 	msg.Seq = proto.Int64(0)
-	msg.Sid = proto.Int64(sid)
+	msg.Sid = proto.Int64(udpSession.GetSid())
 
 	data, err := proto.Marshal(&msg)
 	if err != nil {
@@ -250,6 +268,28 @@ func (r *ReliableUdp) SendCreateSessionRs(sid int64, ip string, port int) {
 	}
 
 	encryptData := r.encrypt.EncodePacket(packetData)
+	udpSession.SendData(encryptData)
+}
 
-	r.udpSocket.SendData(encryptData, ip, port)
+func (r *ReliableUdp) sendAck(udpSession *UdpSession, seq int64) {
+
+	var msg rudpmsg.RudpMsgAck
+	msg.Seq = proto.Int64(seq)
+	msg.Sid = proto.Int64(udpSession.GetSid())
+
+	data, err := proto.Marshal(&msg)
+	if err != nil {
+		fclog.ERROR("Marshal message error!")
+		return
+	}
+
+	packetData := r.EncodePacket(data, rudpmsg.RudpMsgType_MSG_RUDP_ACK)
+
+	if len(packetData) <= 0 {
+		fclog.ERROR("EncodePacket error!")
+		return
+	}
+
+	encryptData := r.encrypt.EncodePacket(packetData)
+	udpSession.SendData(encryptData)
 }

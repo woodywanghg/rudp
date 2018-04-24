@@ -2,6 +2,8 @@ package udpsocket
 
 import "net"
 import "time"
+import "strings"
+import "strconv"
 
 import "github.com/woodywanghg/gofclog"
 
@@ -12,6 +14,8 @@ type UdpSocket struct {
 	recv       UdpRecv
 	buff       []byte
 	sendBuffer UdpSendBuffer
+	localIp    string
+	localPort  int
 }
 
 func (u *UdpSocket) Listen(ip string, port int) error {
@@ -19,6 +23,8 @@ func (u *UdpSocket) Listen(ip string, port int) error {
 	u.buff = make([]byte, 1024)
 	u.ip = ip
 	u.port = port
+	u.localIp = ip
+	u.localPort = port
 
 	var err error = nil
 	u.conn, err = net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP(u.ip), Port: u.port})
@@ -38,6 +44,8 @@ func (u *UdpSocket) DialUDP(ip string, port int) error {
 
 	u.ip = ip
 	u.port = port
+	u.localIp = ""
+	u.localPort = 0
 	u.buff = make([]byte, 1024)
 	srcAddr := &net.UDPAddr{IP: net.IPv4zero, Port: 0}
 	dstAddr := &net.UDPAddr{IP: net.ParseIP(ip), Port: port}
@@ -46,6 +54,13 @@ func (u *UdpSocket) DialUDP(ip string, port int) error {
 	u.conn, err = net.DialUDP("udp", srcAddr, dstAddr)
 	if err != nil {
 		return err
+	}
+
+	localAddr := u.conn.LocalAddr().String()
+	addrAry := strings.Split(localAddr, ":")
+	if len(addrAry) > 1 {
+		u.localIp = addrAry[0]
+		u.localPort, _ = strconv.Atoi(addrAry[1])
 	}
 
 	go u.goRecv()
@@ -110,4 +125,12 @@ func (u *UdpSocket) GetIp() string {
 
 func (u *UdpSocket) GetPort() int {
 	return u.port
+}
+
+func (u *UdpSocket) GetLocalIp() string {
+	return u.localIp
+}
+
+func (u *UdpSocket) GetLocalPort() int {
+	return u.localPort
 }
