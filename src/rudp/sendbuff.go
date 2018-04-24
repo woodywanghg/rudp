@@ -2,6 +2,7 @@ package rudp
 
 import "sync"
 import "time"
+import "github.com/woodywanghg/gofclog"
 
 type SendBuffItem struct {
 	ts      int64
@@ -34,6 +35,9 @@ func (s *SendBuff) Delete(seq int64) {
 	defer s.lock.Unlock()
 
 	delete(s.seqMap, seq)
+
+	fclog.DEBUG("Delete send buffer data! seq=%d", seq)
+
 }
 
 func (s *SendBuff) GetBufferData() map[int64]SendBuffItem {

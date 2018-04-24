@@ -21,7 +21,7 @@ func (p *UdpSendBuffer) Add(b []byte, dstAddr *net.UDPAddr) {
 	var item BufferItem = BufferItem{Data: b, DstAddr: dstAddr}
 	p.bufferList = append(p.bufferList, item)
 
-	fclog.DEBUG("buffer list len=%d addr=%v", len(p.bufferList), *dstAddr)
+	fclog.DEBUG("Add data to send buffer list len=%d addr=%v", len(p.bufferList), *dstAddr)
 }
 
 func (p *UdpSendBuffer) GetLength() int {

@@ -3,7 +3,9 @@ package rudp
 import "udp"
 import "time"
 import "net"
+import "rudpproto"
 import "github.com/woodywanghg/gofclog"
+import "github.com/golang/protobuf/proto"
 
 type UdpSession struct {
 	sendBuf         SendBuff
@@ -50,12 +52,16 @@ func (s *UdpSession) SendData(b []byte) {
 	s.udpSocket.SendData(b, &s.dstAddr)
 }
 
+func (s *UdpSession) SendAckData(b []byte) {
+	s.udpSocket.SendCriticalData(b, &s.dstAddr)
+}
+
 func (s *UdpSession) GetSid() int64 {
 	return s.sessionId
 }
 
-func (s *UdpSession) OnAck(sid int64) {
-	s.sendBuf.Delete(sid)
+func (s *UdpSession) OnAck(seq int64) {
+	s.sendBuf.Delete(seq)
 }
 
 func (s *UdpSession) SetMaxRetransmissionCount(count int) {
@@ -92,4 +98,31 @@ func (s *UdpSession) RetransmissionCheck() {
 		}
 	}
 
+}
+
+func (s *UdpSession) SendPacketData(b []byte) {
+	s.sendBuf.Insert(b, s.sendSeq)
+	s.sendSeq = (s.sendSeq + 1) % SEQ_MAX_INDEX
+
+	var msg rudpmsg.RudpMsgData
+	msg.Seq = proto.Int64(s.sendSeq)
+	msg.Sid = proto.Int64(s.sessionId)
+	msg.Data = b
+
+	data, err := proto.Marshal(&msg)
+	if err != nil {
+		fclog.ERROR("Marshal message error!")
+		return
+	}
+
+	packetData := rudpmsg.EncodePacket(data, rudpmsg.RudpMsgType_MSG_RUDP_DATA)
+
+	if len(packetData) <= 0 {
+		fclog.ERROR("EncodePacket error!")
+		return
+	}
+
+	encryptData := s.reliableUdp.GetEncrypt().EncodePacket(packetData)
+
+	s.udpSocket.SendData(encryptData, &s.dstAddr)
 }
