@@ -1,6 +1,7 @@
 package rudp
 
 import "udp"
+import "net"
 import "github.com/woodywanghg/gofclog"
 import "github.com/golang/protobuf/proto"
 import "rudpproto"
@@ -31,6 +32,8 @@ func (r *ReliableUdp) Listen(ip string, port int) error {
 		return err
 	}
 
+	go r.sessionRetransmissionCheck()
+
 	return nil
 }
 
@@ -42,6 +45,8 @@ func (r *ReliableUdp) DialUDP(ip string, port int) error {
 		fclog.ERROR("ReliableUdp dial udp error!")
 		return err
 	}
+
+	go r.sessionRetransmissionCheck()
 
 	return nil
 }
@@ -296,7 +301,8 @@ func (r *ReliableUdp) sendInvalidSessionRs(sid int64, ip string, port int) {
 	}
 
 	encryptData := r.encrypt.EncodePacket(packetData)
-	r.udpSocket.SendData(encryptData, ip, port)
+	dstAddr := &net.UDPAddr{IP: net.ParseIP(ip), Port: port}
+	r.udpSocket.SendData(encryptData, dstAddr)
 }
 
 func (r *ReliableUdp) sendAck(udpSession *UdpSession, seq int64) {
@@ -348,4 +354,17 @@ func (r *ReliableUdp) SetRetransmissionInterval(sessionId int64, usecond int) {
 	}
 
 	udpSession.SetRetransmissionInterval(usecond)
+}
+
+func (r *ReliableUdp) sessionRetransmissionCheck() {
+
+	for {
+		time.Sleep(1000000 * 10)
+		r.lock.Lock()
+		for _, session := range r.sessionMap {
+			session.RetransmissionCheck()
+		}
+		r.lock.Unlock()
+
+	}
 }

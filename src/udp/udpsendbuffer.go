@@ -1,12 +1,12 @@
 package udpsocket
 
+import "net"
 import "sync"
 import "github.com/woodywanghg/gofclog"
 
 type BufferItem struct {
-	Data []byte
-	Ip   string
-	Port int
+	Data    []byte
+	DstAddr *net.UDPAddr
 }
 
 type UdpSendBuffer struct {
@@ -14,14 +14,14 @@ type UdpSendBuffer struct {
 	lockBuff   sync.Mutex
 }
 
-func (p *UdpSendBuffer) Add(b []byte, ip string, port int) {
+func (p *UdpSendBuffer) Add(b []byte, dstAddr *net.UDPAddr) {
 	p.lockBuff.Lock()
 	defer p.lockBuff.Unlock()
 
-	var item BufferItem = BufferItem{Data: b, Ip: ip, Port: port}
+	var item BufferItem = BufferItem{Data: b, DstAddr: dstAddr}
 	p.bufferList = append(p.bufferList, item)
 
-	fclog.DEBUG("buffer list=%d ip=%s port=%d b=%v", len(p.bufferList), ip, port, b)
+	fclog.DEBUG("buffer list len=%d addr=%v", len(p.bufferList), *dstAddr)
 }
 
 func (p *UdpSendBuffer) GetLength() int {

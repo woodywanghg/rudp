@@ -35,3 +35,10 @@ func (s *SendBuff) Delete(seq int64) {
 
 	delete(s.seqMap, seq)
 }
+
+func (s *SendBuff) GetBufferData() map[int64]SendBuffItem {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	return s.seqMap
+}

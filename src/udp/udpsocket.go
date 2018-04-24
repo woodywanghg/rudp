@@ -96,9 +96,7 @@ func (u *UdpSocket) sendUdpDataToPeer() {
 	bufferList := u.sendBuffer.GetData()
 	fclog.DEBUG("BufferList len=%d list=%v", len(bufferList), bufferList)
 	for _, v := range bufferList {
-		dstAddr := &net.UDPAddr{IP: net.ParseIP(v.Ip), Port: v.Port}
-		fclog.DEBUG("try to send: ip=%s port=%d data=%v", v.Ip, v.Port, v.Data)
-		sLen, err := u.conn.WriteToUDP(v.Data, dstAddr)
+		sLen, err := u.conn.WriteToUDP(v.Data, v.DstAddr)
 		if err != nil {
 			fclog.ERROR("SendData error! err=%s, sLen=%d", err.Error(), sLen)
 			continue
@@ -111,8 +109,15 @@ func (u *UdpSocket) SetUdpReceiver(recv UdpRecv) {
 	fclog.DEBUG("u.recv=%p", u.recv)
 }
 
-func (u *UdpSocket) SendData(b []byte, ip string, port int) {
-	u.sendBuffer.Add(b, ip, port)
+func (u *UdpSocket) SendData(b []byte, dstAddr *net.UDPAddr) {
+	u.sendBuffer.Add(b, dstAddr)
+}
+
+func (u *UdpSocket) SendCriticalData(b []byte, dstAddr *net.UDPAddr) {
+	sLen, err := u.conn.WriteToUDP(b, dstAddr)
+	if err != nil {
+		fclog.ERROR("SendCriticalData error! err=%s, sLen=%d", err.Error(), sLen)
+	}
 }
 
 func (u *UdpSocket) Close() {

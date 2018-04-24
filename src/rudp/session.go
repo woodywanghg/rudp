@@ -1,6 +1,8 @@
 package rudp
 
 import "udp"
+import "time"
+import "net"
 import "github.com/woodywanghg/gofclog"
 
 type UdpSession struct {
@@ -14,7 +16,8 @@ type UdpSession struct {
 	reliableUdp     *ReliableUdp
 	sendSeq         int64
 	retransCount    int
-	retransInterval int
+	retransInterval int64
+	dstAddr         net.UDPAddr
 }
 
 func (s *UdpSession) Init(sessionId int64, dIp string, dPort int, udpSocket *udpsocket.UdpSocket, reliableUdp *ReliableUdp) {
@@ -28,6 +31,7 @@ func (s *UdpSession) Init(sessionId int64, dIp string, dPort int, udpSocket *udp
 	s.sendBuf.Init()
 	s.recvBuf.Init()
 	s.udpSocket = udpSocket
+	s.dstAddr = net.UDPAddr{IP: net.ParseIP(dIp), Port: dPort}
 
 }
 
@@ -43,7 +47,7 @@ func (s *UdpSession) SendData(b []byte) {
 	s.sendBuf.Insert(b, s.sendSeq)
 	s.sendSeq = (s.sendSeq + 1) % SEQ_MAX_INDEX
 
-	s.udpSocket.SendData(b, s.dIp, s.dPort)
+	s.udpSocket.SendData(b, &s.dstAddr)
 }
 
 func (s *UdpSession) GetSid() int64 {
@@ -60,13 +64,32 @@ func (s *UdpSession) SetMaxRetransmissionCount(count int) {
 }
 
 func (s *UdpSession) SetRetransmissionInterval(usecond int) {
-	s.retransInterval = usecond
+	s.retransInterval = int64(usecond)
 	fclog.DEBUG("SetRetransmissionInterval interval=%d", usecond)
 }
 
 func (s *UdpSession) RetransmissionCheck() {
 	if s.retransCount == 0 {
 		return
+	}
+
+	curTs := time.Now().UnixNano()
+	bufferData := s.sendBuf.GetBufferData()
+
+	for seq, v := range bufferData {
+		if curTs-v.ts >= s.retransInterval {
+
+			s.udpSocket.SendCriticalData(v.data, &s.dstAddr)
+			v.retrans += 1
+			fclog.DEBUG("Ack timeout retransmission interval=%d seq=%d retrans count=%d", s.retransInterval, seq, v.retrans)
+
+			if s.retransCount > 0 {
+				if v.retrans > s.retransCount {
+					fclog.INFO("Packet invalid! rm packet.  max retransmission limit=%d", v.retrans)
+					s.sendBuf.Delete(seq)
+				}
+			}
+		}
 	}
 
 }
