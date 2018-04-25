@@ -28,6 +28,12 @@ func (s *SendBuff) Insert(b []byte, seq int64) {
 	item := SendBuffItem{ts: ts, data: b, retrans: 0}
 
 	s.seqMap[seq] = item
+
+	fclog.DEBUG("Send buffer seq=%d len=%d", seq, len(s.seqMap))
+
+	for k, _ := range s.seqMap {
+		fclog.DEBUG("----->key=%d", k)
+	}
 }
 
 func (s *SendBuff) Delete(seq int64) {

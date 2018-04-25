@@ -45,13 +45,6 @@ func (s *UdpSession) OnUdpRecv(b []byte, bLen int, ip string, port int) {
 	s.reliableUdp.OnUdpRecv(b, bLen, ip, port)
 }
 
-func (s *UdpSession) SendData(b []byte) {
-	s.sendBuf.Insert(b, s.sendSeq)
-	s.sendSeq = (s.sendSeq + 1) % SEQ_MAX_INDEX
-
-	s.udpSocket.SendData(b, &s.dstAddr)
-}
-
 func (s *UdpSession) SendAckData(b []byte) {
 	s.udpSocket.SendCriticalData(b, &s.dstAddr)
 }
@@ -100,9 +93,7 @@ func (s *UdpSession) RetransmissionCheck() {
 
 }
 
-func (s *UdpSession) SendPacketData(b []byte) {
-	s.sendBuf.Insert(b, s.sendSeq)
-	s.sendSeq = (s.sendSeq + 1) % SEQ_MAX_INDEX
+func (s *UdpSession) SendData(b []byte) {
 
 	var msg rudpmsg.RudpMsgData
 	msg.Seq = proto.Int64(s.sendSeq)
@@ -125,4 +116,89 @@ func (s *UdpSession) SendPacketData(b []byte) {
 	encryptData := s.reliableUdp.GetEncrypt().EncodePacket(packetData)
 
 	s.udpSocket.SendData(encryptData, &s.dstAddr)
+
+	s.sendBuf.Insert(encryptData, s.sendSeq)
+	s.sendSeq = (s.sendSeq + 1) % SEQ_MAX_INDEX
+}
+
+func (s *UdpSession) SendAck(seq int64) {
+
+	var msg rudpmsg.RudpMsgAck
+	msg.Seq = proto.Int64(seq)
+	msg.Sid = proto.Int64(s.sessionId)
+
+	data, err := proto.Marshal(&msg)
+	if err != nil {
+		fclog.ERROR("Marshal message error!")
+		return
+	}
+
+	packetData := rudpmsg.EncodePacket(data, rudpmsg.RudpMsgType_MSG_RUDP_ACK)
+
+	if len(packetData) <= 0 {
+		fclog.ERROR("EncodePacket error!")
+		return
+	}
+
+	encryptData := s.reliableUdp.GetEncrypt().EncodePacket(packetData)
+	s.SendAckData(encryptData)
+}
+
+func (s *UdpSession) SendRegister(sessionId int64) error {
+
+	var msg rudpmsg.RudpMsgReg
+	msg.Seq = proto.Int64(s.sendSeq)
+	msg.Sid = proto.Int64(sessionId)
+
+	data, err := proto.Marshal(&msg)
+	if err != nil {
+		fclog.ERROR("Marshal message error!")
+		return err
+	}
+
+	packetData := rudpmsg.EncodePacket(data, rudpmsg.RudpMsgType_MSG_RUDP_REG)
+
+	if len(packetData) <= 0 {
+		fclog.ERROR("EncodePacket error!")
+		return err
+	}
+
+	encryptData := s.reliableUdp.GetEncrypt().EncodePacket(packetData)
+
+	s.udpSocket.SendData(encryptData, &s.dstAddr)
+
+	s.sendBuf.Insert(encryptData, s.sendSeq)
+	s.sendSeq = (s.sendSeq + 1) % SEQ_MAX_INDEX
+
+	return nil
+}
+
+func (s *UdpSession) SendRegisterRs() bool {
+
+	var msg rudpmsg.RudpMsgRegRs
+	msg.Seq = proto.Int64(0)
+	msg.Sid = proto.Int64(s.sessionId)
+	msg.Code = proto.Int64(0)
+
+	data, err := proto.Marshal(&msg)
+	if err != nil {
+		fclog.ERROR("Marshal message error!")
+		return false
+	}
+
+	packetData := rudpmsg.EncodePacket(data, rudpmsg.RudpMsgType_MSG_RUDP_REG_RS)
+
+	if len(packetData) <= 0 {
+		fclog.ERROR("EncodePacket error!")
+		return false
+	}
+
+	encryptData := s.reliableUdp.GetEncrypt().EncodePacket(packetData)
+
+	s.udpSocket.SendData(encryptData, &s.dstAddr)
+
+	s.sendBuf.Insert(encryptData, s.sendSeq)
+	s.sendSeq = (s.sendSeq + 1) % SEQ_MAX_INDEX
+
+	return true
 }
