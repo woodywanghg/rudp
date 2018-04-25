@@ -1,7 +1,8 @@
 package udpsocket
 
 import "net"
-import "time"
+
+//import "time"
 import "strings"
 import "strconv"
 
@@ -16,6 +17,7 @@ type UdpSocket struct {
 	sendBuffer UdpSendBuffer
 	localIp    string
 	localPort  int
+	writeChan  chan bool
 }
 
 func (u *UdpSocket) Listen(ip string, port int) error {
@@ -25,6 +27,7 @@ func (u *UdpSocket) Listen(ip string, port int) error {
 	u.port = port
 	u.localIp = ip
 	u.localPort = port
+	u.writeChan = make(chan bool)
 
 	var err error = nil
 	u.conn, err = net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP(u.ip), Port: u.port})
@@ -87,14 +90,16 @@ func (u *UdpSocket) goRecv() {
 func (u *UdpSocket) goSend() {
 	for {
 
-		time.Sleep(1000000 * 1000)
-		u.sendUdpDataToPeer()
+		select {
+		case <-u.writeChan:
+			fclog.DEBUG("CHANNEL write")
+			u.sendUdpDataToPeer()
+		}
 	}
 }
 
 func (u *UdpSocket) sendUdpDataToPeer() {
 	bufferList := u.sendBuffer.GetData()
-	fclog.DEBUG("BufferList len=%d list=%v", len(bufferList), bufferList)
 	for _, v := range bufferList {
 		sLen, err := u.conn.WriteToUDP(v.Data, v.DstAddr)
 		if err != nil {
@@ -111,6 +116,7 @@ func (u *UdpSocket) SetUdpReceiver(recv UdpRecv) {
 
 func (u *UdpSocket) SendData(b []byte, dstAddr *net.UDPAddr) {
 	u.sendBuffer.Add(b, dstAddr)
+	u.writeChan <- true
 }
 
 func (u *UdpSocket) SendCriticalData(b []byte, dstAddr *net.UDPAddr) {

@@ -39,7 +39,7 @@ func (p *UdpSendBuffer) GetData() []BufferItem {
 
 	copy(bufferList, p.bufferList)
 
-	fclog.DEBUG("bufferList=%v", bufferList)
+	//fclog.DEBUG("bufferList=%v", bufferList)
 
 	p.bufferList = make([]BufferItem, 0)
 

@@ -63,7 +63,7 @@ func (s *UdpSession) SetMaxRetransmissionCount(count int) {
 }
 
 func (s *UdpSession) SetRetransmissionInterval(usecond int) {
-	s.retransInterval = int64(usecond)
+	s.retransInterval = int64(usecond * 1000000)
 	fclog.DEBUG("SetRetransmissionInterval interval=%d", usecond)
 }
 
@@ -76,6 +76,7 @@ func (s *UdpSession) RetransmissionCheck() {
 	bufferData := s.sendBuf.GetBufferData()
 
 	for seq, v := range bufferData {
+		fclog.DEBUG("curTs=%d v.ts=%d sub=%d interval=%d", curTs, v.ts, curTs-v.ts, s.retransInterval)
 		if curTs-v.ts >= s.retransInterval {
 
 			s.udpSocket.SendCriticalData(v.data, &s.dstAddr)

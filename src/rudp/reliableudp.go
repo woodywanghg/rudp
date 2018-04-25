@@ -291,7 +291,7 @@ func (r *ReliableUdp) SetRetransmissionInterval(sessionId int64, usecond int) {
 func (r *ReliableUdp) sessionRetransmissionCheck() {
 
 	for {
-		time.Sleep(1000000 * 100000)
+		time.Sleep(1000000 * 1000)
 		r.lock.Lock()
 		for _, session := range r.sessionMap {
 			session.RetransmissionCheck()
