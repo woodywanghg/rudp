@@ -11,12 +11,14 @@ type SendBuffItem struct {
 }
 
 type SendBuff struct {
-	seqMap map[int64]SendBuffItem
-	lock   sync.Mutex
+	udpSession *UdpSession
+	seqMap     map[int64]*SendBuffItem
+	lock       sync.Mutex
 }
 
-func (s *SendBuff) Init() {
-	s.seqMap = make(map[int64]SendBuffItem, 100)
+func (s *SendBuff) Init(udpSession *UdpSession) {
+	s.udpSession = udpSession
+	s.seqMap = make(map[int64]*SendBuffItem, 100)
 }
 
 func (s *SendBuff) Insert(b []byte, seq int64) {
@@ -25,7 +27,10 @@ func (s *SendBuff) Insert(b []byte, seq int64) {
 	defer s.lock.Unlock()
 
 	ts := time.Now().UnixNano()
-	item := SendBuffItem{ts: ts, data: b, retrans: 0}
+	item := new(SendBuffItem)
+	item.ts = ts
+	item.data = b
+	item.retrans = 0
 
 	s.seqMap[seq] = item
 
@@ -46,9 +51,30 @@ func (s *SendBuff) Delete(seq int64) {
 
 }
 
-func (s *SendBuff) GetBufferData() map[int64]SendBuffItem {
+func (s *SendBuff) Check() {
+	if s.udpSession.GetRetransCount() == 0 {
+		return
+	}
+
+	curTs := time.Now().UnixNano()
+
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	return s.seqMap
+	for seq, v := range s.seqMap {
+		fclog.DEBUG("curTs=%d v.ts=%d sub=%d interval=%d", curTs, v.ts, curTs-v.ts, s.udpSession.GetRetransInterval())
+		if curTs-v.ts >= s.udpSession.GetRetransInterval() {
+
+			v.retrans += 1
+			s.udpSession.SendRetransData(v.data)
+			fclog.DEBUG("Ack timeout retransmission interval=%d seq=%d retrans count=%d", s.udpSession.GetRetransInterval(), seq, v.retrans)
+
+			if s.udpSession.GetRetransCount() > 0 {
+				if v.retrans > s.udpSession.GetRetransCount() {
+					fclog.INFO("Packet invalid! rm packet.  max retransmission limit=%d", v.retrans)
+					delete(s.seqMap, seq)
+				}
+			}
+		}
+	}
 }

@@ -1,7 +1,8 @@
 package rudp
 
 import "udp"
-import "time"
+
+//import "time"
 import "net"
 import "rudpproto"
 import "github.com/woodywanghg/gofclog"
@@ -30,7 +31,7 @@ func (s *UdpSession) Init(sessionId int64, dIp string, dPort int, udpSocket *udp
 	s.retransInterval = 100
 	s.reliableUdp = reliableUdp
 	s.sendSeq = 0
-	s.sendBuf.Init()
+	s.sendBuf.Init(s)
 	s.recvBuf.Init()
 	s.udpSocket = udpSocket
 	s.dstAddr = net.UDPAddr{IP: net.ParseIP(dIp), Port: dPort}
@@ -68,30 +69,7 @@ func (s *UdpSession) SetRetransmissionInterval(usecond int) {
 }
 
 func (s *UdpSession) RetransmissionCheck() {
-	if s.retransCount == 0 {
-		return
-	}
-
-	curTs := time.Now().UnixNano()
-	bufferData := s.sendBuf.GetBufferData()
-
-	for seq, v := range bufferData {
-		fclog.DEBUG("curTs=%d v.ts=%d sub=%d interval=%d", curTs, v.ts, curTs-v.ts, s.retransInterval)
-		if curTs-v.ts >= s.retransInterval {
-
-			s.udpSocket.SendCriticalData(v.data, &s.dstAddr)
-			v.retrans += 1
-			fclog.DEBUG("Ack timeout retransmission interval=%d seq=%d retrans count=%d", s.retransInterval, seq, v.retrans)
-
-			if s.retransCount > 0 {
-				if v.retrans > s.retransCount {
-					fclog.INFO("Packet invalid! rm packet.  max retransmission limit=%d", v.retrans)
-					s.sendBuf.Delete(seq)
-				}
-			}
-		}
-	}
-
+	s.sendBuf.Check()
 }
 
 func (s *UdpSession) SendData(b []byte) {
@@ -116,10 +94,10 @@ func (s *UdpSession) SendData(b []byte) {
 
 	encryptData := s.reliableUdp.GetEncrypt().EncodePacket(packetData)
 
-	s.udpSocket.SendData(encryptData, &s.dstAddr)
-
 	s.sendBuf.Insert(encryptData, s.sendSeq)
 	s.sendSeq = (s.sendSeq + 1) % SEQ_MAX_INDEX
+
+	s.udpSocket.SendData(encryptData, &s.dstAddr)
 }
 
 func (s *UdpSession) SendAck(seq int64) {
@@ -166,10 +144,10 @@ func (s *UdpSession) SendRegister(sessionId int64) error {
 
 	encryptData := s.reliableUdp.GetEncrypt().EncodePacket(packetData)
 
-	s.udpSocket.SendData(encryptData, &s.dstAddr)
-
 	s.sendBuf.Insert(encryptData, s.sendSeq)
 	s.sendSeq = (s.sendSeq + 1) % SEQ_MAX_INDEX
+
+	s.udpSocket.SendData(encryptData, &s.dstAddr)
 
 	return nil
 }
@@ -196,10 +174,22 @@ func (s *UdpSession) SendRegisterRs() bool {
 
 	encryptData := s.reliableUdp.GetEncrypt().EncodePacket(packetData)
 
-	s.udpSocket.SendData(encryptData, &s.dstAddr)
-
 	s.sendBuf.Insert(encryptData, s.sendSeq)
 	s.sendSeq = (s.sendSeq + 1) % SEQ_MAX_INDEX
 
+	s.udpSocket.SendData(encryptData, &s.dstAddr)
+
 	return true
+}
+
+func (s *UdpSession) GetRetransCount() int {
+	return s.retransCount
+}
+
+func (s *UdpSession) GetRetransInterval() int64 {
+	return s.retransInterval
+}
+
+func (s *UdpSession) SendRetransData(b []byte) {
+	s.udpSocket.SendCriticalData(b, &s.dstAddr)
 }
