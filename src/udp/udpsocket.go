@@ -90,11 +90,9 @@ func (u *UdpSocket) goRecv() {
 func (u *UdpSocket) goSend() {
 	for {
 
-		select {
-		case <-u.writeChan:
-			fclog.DEBUG("CHANNEL write")
-			u.sendUdpDataToPeer()
-		}
+		<-u.writeChan
+		fclog.DEBUG("CHANNEL write")
+		u.sendUdpDataToPeer()
 	}
 }
 

@@ -32,7 +32,7 @@ func (s *UdpSession) Init(sessionId int64, dIp string, dPort int, udpSocket *udp
 	s.reliableUdp = reliableUdp
 	s.sendSeq = 0
 	s.sendBuf.Init(s)
-	s.recvBuf.Init()
+	s.recvBuf.Init(s)
 	s.udpSocket = udpSocket
 	s.dstAddr = net.UDPAddr{IP: net.ParseIP(dIp), Port: dPort}
 
