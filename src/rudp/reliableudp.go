@@ -8,11 +8,27 @@ import "rudpproto"
 import "time"
 import "sync"
 
+const (
+	UDP_SESSION_RS_OK  = 0
+	UDP_SESSION_RS_ERR = 1
+)
+
 type ReliableUdp struct {
 	encrypt    RudpEncrypt
 	udpSocket  *udpsocket.UdpSocket
 	lock       sync.Mutex
 	sessionMap map[int64]*UdpSession
+	udpInter   RudpInter
+}
+
+var rudp *ReliableUdp = nil
+
+func GetReliableUdp() *ReliableUdp {
+	if rudp == nil {
+		rudp = new(ReliableUdp)
+	}
+
+	return rudp
 }
 
 func (r *ReliableUdp) Init() {
@@ -20,6 +36,10 @@ func (r *ReliableUdp) Init() {
 	r.udpSocket = nil
 	r.encrypt.Init()
 	r.sessionMap = make(map[int64]*UdpSession, 0)
+}
+
+func (r *ReliableUdp) SetUdpInterface(udpInter RudpInter) {
+	r.udpInter = udpInter
 }
 
 func (r *ReliableUdp) Listen(ip string, port int) error {
@@ -120,6 +140,7 @@ func (r *ReliableUdp) processMsgData(b []byte, ip string, port int) {
 	udpSession.SendAck(seq)
 
 	fclog.DEBUG("Receice udp data: %s", string(data))
+	r.udpInter.OnRecv(sid, data)
 
 }
 
@@ -211,12 +232,15 @@ func (r *ReliableUdp) processMsgRegRs(b []byte, ip string, port int) {
 	udpSession, exist := r.sessionMap[sid]
 	if !exist {
 		fclog.ERROR("Receive invalid data sid=%d seq=%d", sid, seq)
+		r.udpInter.OnSessionCreate(sid, UDP_SESSION_RS_ERR)
 		return
 	}
 
 	udpSession.SendAck(seq)
 
 	fclog.DEBUG("Receive udp session response sessionid=%d code=%d", sid, code)
+
+	r.udpInter.OnSessionCreate(sid, UDP_SESSION_RS_OK)
 }
 
 func (r *ReliableUdp) CreateSession(ip string, port int) (int64, error) {

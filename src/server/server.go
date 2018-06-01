@@ -7,6 +7,22 @@ import "time"
 import "github.com/woodywanghg/gofclog"
 import "github.com/woodywanghg/goini"
 
+type TestServer struct {
+}
+
+func (t *TestServer) OnSessionCreate(sessionId int64, code int) {
+	fmt.Printf("OnSessionCreate  code=%d\n", code)
+}
+
+func (t *TestServer) OnRecv(sessionId int64, b []byte) {
+
+	fmt.Printf("OnRecv data len=%d\n", len(b))
+}
+
+func (t *TestServer) OnSessionError(sessionId int64, errCode int) {
+	fmt.Printf("OnRecv data session id=%d, code=%d\n", sessionId, errCode)
+}
+
 func main() {
 
 	fclog.Init(true, true, "rudp.log", 1048576, fclog.LEVEL_DEBUG)
@@ -23,7 +39,7 @@ func main() {
 	clientIp := iniObj.ReadString("CLIENT", "ip", "error")
 	clientPort := iniObj.ReadInt("CLIENT", "port", -1)
 
-	var obj rudp.ReliableUdp
+	var obj = rudp.GetReliableUdp()
 	obj.Init()
 
 	if serverIp != "error" && serverPort != -1 {
@@ -35,6 +51,8 @@ func main() {
 		}
 	}
 
+	var objTest TestServer
+	obj.SetUdpInterface(&objTest)
 	var sid int64 = 0
 	var err error = nil
 	fclog.DEBUG("clientip=%s port=%d", clientIp, clientPort)
