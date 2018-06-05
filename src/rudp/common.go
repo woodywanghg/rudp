@@ -1,5 +1,5 @@
 package rudp
 
 const (
-	SEQ_MAX_INDEX = 65535
+	SEQ_MAX_INDEX = 1048576
 )

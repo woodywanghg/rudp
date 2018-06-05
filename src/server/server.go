@@ -67,7 +67,7 @@ func main() {
 
 	index := 1000
 	for {
-		time.Sleep(1000000 * 5000)
+		time.Sleep(1000000 * 200)
 		if sid != 0 {
 			buff := fmt.Sprintf("index=%d", index)
 			index += 1

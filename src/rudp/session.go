@@ -2,7 +2,7 @@ package rudp
 
 import "udp"
 
-//import "time"
+import "time"
 import "net"
 import "rudpproto"
 import "github.com/woodywanghg/gofclog"
@@ -20,6 +20,7 @@ type UdpSession struct {
 	sendSeq         int64
 	retransCount    int
 	retransInterval int64
+	readTimeout     int64
 	dstAddr         net.UDPAddr
 }
 
@@ -29,6 +30,7 @@ func (s *UdpSession) Init(sessionId int64, dIp string, dPort int, udpSocket *udp
 	s.sessionId = sessionId
 	s.retransCount = -1
 	s.retransInterval = 100
+	s.readTimeout = 2000
 	s.reliableUdp = reliableUdp
 	s.sendSeq = 0
 	s.sendBuf.Init(s)
@@ -68,6 +70,11 @@ func (s *UdpSession) SetRetransmissionInterval(usecond int) {
 	fclog.DEBUG("SetRetransmissionInterval interval=%d", usecond)
 }
 
+func (s *UdpSession) SetReadTimeout(usecond int) {
+	s.readTimeout = int64(usecond * 1000000)
+	fclog.DEBUG("SetRetransmissionInterval interval=%d", usecond)
+}
+
 func (s *UdpSession) RetransmissionCheck() {
 	s.sendBuf.Check()
 }
@@ -96,6 +103,7 @@ func (s *UdpSession) SendData(b []byte) {
 
 	s.sendBuf.Insert(encryptData, s.sendSeq)
 	s.sendSeq = (s.sendSeq + 1) % SEQ_MAX_INDEX
+	fclog.DEBUG("SendData seq++")
 
 	s.udpSocket.SendData(encryptData, &s.dstAddr)
 }
@@ -145,7 +153,6 @@ func (s *UdpSession) SendRegister(sessionId int64) error {
 	encryptData := s.reliableUdp.GetEncrypt().EncodePacket(packetData)
 
 	s.sendBuf.Insert(encryptData, s.sendSeq)
-	s.sendSeq = (s.sendSeq + 1) % SEQ_MAX_INDEX
 
 	s.udpSocket.SendData(encryptData, &s.dstAddr)
 
@@ -175,7 +182,6 @@ func (s *UdpSession) SendRegisterRs() bool {
 	encryptData := s.reliableUdp.GetEncrypt().EncodePacket(packetData)
 
 	s.sendBuf.Insert(encryptData, s.sendSeq)
-	s.sendSeq = (s.sendSeq + 1) % SEQ_MAX_INDEX
 
 	s.udpSocket.SendData(encryptData, &s.dstAddr)
 
@@ -192,4 +198,17 @@ func (s *UdpSession) GetRetransInterval() int64 {
 
 func (s *UdpSession) SendRetransData(b []byte) {
 	s.udpSocket.SendCriticalData(b, &s.dstAddr)
+}
+
+func (s *UdpSession) OnDataRecv(seq int64, b []byte) bool {
+	return s.recvBuf.Insert(seq, b)
+}
+
+func (s *UdpSession) ReadCheck() (b []byte, bRead bool) {
+	return s.recvBuf.GetData()
+}
+
+func (s *UdpSession) ReadTimeoutCheck() (b []byte, bRead bool) {
+	curTs := time.Now().UnixNano()
+	return s.recvBuf.GetTimeoutData(curTs, s.readTimeout*1000000)
 }

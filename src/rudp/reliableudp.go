@@ -14,11 +14,13 @@ const (
 )
 
 type ReliableUdp struct {
-	encrypt    RudpEncrypt
-	udpSocket  *udpsocket.UdpSocket
-	lock       sync.Mutex
-	sessionMap map[int64]*UdpSession
-	udpInter   RudpInter
+	encrypt     RudpEncrypt
+	udpSocket   *udpsocket.UdpSocket
+	lock        sync.Mutex
+	sessionMap  map[int64]*UdpSession
+	udpInter    RudpInter
+	readChan    chan bool
+	readTimeOut int
 }
 
 var rudp *ReliableUdp = nil
@@ -36,6 +38,8 @@ func (r *ReliableUdp) Init() {
 	r.udpSocket = nil
 	r.encrypt.Init()
 	r.sessionMap = make(map[int64]*UdpSession, 0)
+	r.readChan = make(chan bool)
+	r.readTimeOut = 2
 }
 
 func (r *ReliableUdp) SetUdpInterface(udpInter RudpInter) {
@@ -53,6 +57,7 @@ func (r *ReliableUdp) Listen(ip string, port int) error {
 	}
 
 	go r.sessionRetransmissionCheck()
+	go r.sessionReadCheck()
 
 	return nil
 }
@@ -67,6 +72,7 @@ func (r *ReliableUdp) DialUDP(ip string, port int) error {
 	}
 
 	go r.sessionRetransmissionCheck()
+	go r.sessionReadCheck()
 
 	return nil
 }
@@ -139,9 +145,11 @@ func (r *ReliableUdp) processMsgData(b []byte, ip string, port int) {
 
 	udpSession.SendAck(seq)
 
-	fclog.DEBUG("Receice udp data: %s", string(data))
-	r.udpInter.OnRecv(sid, data)
+	fclog.DEBUG("Receice udp data: seq=%d data='%s'", seq, string(data))
 
+	if udpSession.OnDataRecv(seq, data) {
+		r.readChan <- true
+	}
 }
 
 func (r *ReliableUdp) processMsgAck(b []byte, ip string, port int) {
@@ -322,6 +330,55 @@ func (r *ReliableUdp) sessionRetransmissionCheck() {
 		}
 		r.lock.Unlock()
 
+	}
+}
+
+func (r *ReliableUdp) sessionReadCheck() {
+
+	for {
+		<-r.readChan
+		r.lock.Lock()
+		for sid, session := range r.sessionMap {
+
+			for {
+				data, bHave := session.ReadCheck()
+				if bHave {
+					fclog.DEBUG("Find sequence packet")
+					r.udpInter.OnRecv(sid, data)
+				} else {
+					break
+				}
+			}
+		}
+		r.lock.Unlock()
+		fclog.DEBUG("Event fire check")
+
+	}
+}
+
+func (r *ReliableUdp) sessionReadTimeoutCheck() {
+
+	for {
+		select {
+
+		case <-time.After(time.Duration(r.readTimeOut) * time.Second):
+			r.lock.Lock()
+			for sid, session := range r.sessionMap {
+
+				for {
+					data, bHave := session.ReadTimeoutCheck()
+					if bHave {
+						fclog.DEBUG("find time out packet")
+						r.udpInter.OnRecv(sid, data)
+					} else {
+						break
+					}
+				}
+			}
+			r.lock.Unlock()
+			fclog.DEBUG("time out check")
+
+		}
 	}
 }
 
