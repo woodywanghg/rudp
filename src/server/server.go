@@ -6,6 +6,8 @@ import "rudp"
 import "time"
 import "github.com/woodywanghg/gofclog"
 import "github.com/woodywanghg/goini"
+import "net/http"
+import _ "net/http/pprof"
 
 type TestServer struct {
 }
@@ -24,6 +26,10 @@ func (t *TestServer) OnSessionError(sessionId int64, errCode int) {
 }
 
 func main() {
+
+	go func() {
+		fmt.Println(http.ListenAndServe("0.0.0.0:6060", nil))
+	}()
 
 	fclog.Init(true, true, "rudp.log", 1048576, fclog.LEVEL_DEBUG)
 
@@ -67,7 +73,7 @@ func main() {
 
 	index := 1000
 	for {
-		time.Sleep(1000000 * 200)
+		time.Sleep(1000000 * 20)
 		if sid != 0 {
 			buff := fmt.Sprintf("index=%d", index)
 			index += 1

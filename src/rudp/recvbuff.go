@@ -1,6 +1,5 @@
 package rudp
 
-import "sync"
 import "time"
 import "sort"
 import "math"
@@ -15,7 +14,6 @@ type RecvBuff struct {
 	seq        int64
 	seqMap     map[int64]*RecvBuffItem
 	nextSeq    int64
-	lock       sync.Mutex
 	udpSession *UdpSession
 	seqInts    []int
 }
@@ -28,9 +26,6 @@ func (s *RecvBuff) Init(udpSession *UdpSession) {
 }
 
 func (s *RecvBuff) Insert(seq int64, b []byte) bool {
-
-	s.lock.Lock()
-	defer s.lock.Unlock()
 
 	if seq < s.nextSeq && math.Abs(float64(seq-s.nextSeq)) < (SEQ_MAX_INDEX-3000)*1.0 {
 		fclog.ERROR("Find invalid timeout packet! seq=%d", seq)
@@ -56,9 +51,6 @@ func (s *RecvBuff) Insert(seq int64, b []byte) bool {
 }
 
 func (s *RecvBuff) GetData() ([]byte, bool) {
-
-	s.lock.Lock()
-	defer s.lock.Unlock()
 
 	var data []byte
 
@@ -86,9 +78,6 @@ func (s *RecvBuff) GetData() ([]byte, bool) {
 }
 
 func (s *RecvBuff) GetTimeoutData(curTs int64, timeoutSec int64) ([]byte, bool) {
-
-	s.lock.Lock()
-	defer s.lock.Unlock()
 
 	var data []byte
 

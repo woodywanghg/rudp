@@ -1,6 +1,5 @@
 package rudp
 
-import "sync"
 import "time"
 import "github.com/woodywanghg/gofclog"
 
@@ -13,7 +12,6 @@ type SendBuffItem struct {
 type SendBuff struct {
 	udpSession *UdpSession
 	seqMap     map[int64]*SendBuffItem
-	lock       sync.Mutex
 }
 
 func (s *SendBuff) Init(udpSession *UdpSession) {
@@ -22,9 +20,6 @@ func (s *SendBuff) Init(udpSession *UdpSession) {
 }
 
 func (s *SendBuff) Insert(b []byte, seq int64) {
-
-	s.lock.Lock()
-	defer s.lock.Unlock()
 
 	ts := time.Now().UnixNano()
 	item := new(SendBuffItem)
@@ -42,8 +37,6 @@ func (s *SendBuff) Insert(b []byte, seq int64) {
 }
 
 func (s *SendBuff) Delete(seq int64) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
 
 	delete(s.seqMap, seq)
 
@@ -58,9 +51,7 @@ func (s *SendBuff) Check() {
 
 	curTs := time.Now().UnixNano()
 
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
+	fclog.DEBUG("Check......")
 	for seq, v := range s.seqMap {
 		fclog.DEBUG("curTs=%d v.ts=%d sub=%d interval=%d", curTs, v.ts, curTs-v.ts, s.udpSession.GetRetransInterval())
 		if curTs-v.ts >= s.udpSession.GetRetransInterval() {
@@ -77,4 +68,5 @@ func (s *SendBuff) Check() {
 			}
 		}
 	}
+	fclog.DEBUG("Check out......")
 }

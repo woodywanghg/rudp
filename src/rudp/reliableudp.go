@@ -135,7 +135,6 @@ func (r *ReliableUdp) processMsgData(b []byte, ip string, port int) {
 	data := msgData.Data
 
 	r.lock.Lock()
-	defer r.lock.Unlock()
 
 	udpSession, exist := r.sessionMap[sid]
 	if !exist {
@@ -147,8 +146,14 @@ func (r *ReliableUdp) processMsgData(b []byte, ip string, port int) {
 
 	fclog.DEBUG("Receice udp data: seq=%d data='%s'", seq, string(data))
 
-	if udpSession.OnDataRecv(seq, data) {
+	insertOK := udpSession.OnDataRecv(seq, data)
+
+	r.lock.Unlock()
+
+	if insertOK {
+		fclog.DEBUG("signal---->")
 		r.readChan <- true
+		fclog.DEBUG("signal OK---->")
 	}
 }
 
@@ -346,6 +351,7 @@ func (r *ReliableUdp) sessionReadCheck() {
 					fclog.DEBUG("Find sequence packet")
 					r.udpInter.OnRecv(sid, data)
 				} else {
+					fclog.DEBUG("Break CHECK")
 					break
 				}
 			}
