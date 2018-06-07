@@ -9,19 +9,23 @@ import "github.com/woodywanghg/gofclog"
 import "github.com/golang/protobuf/proto"
 
 type UdpSession struct {
-	sendBuf         SendBuff
-	recvBuf         RecvBuff
-	sessionId       int64
-	dIp             string
-	dPort           int
-	recv            udpsocket.UdpRecv
-	udpSocket       *udpsocket.UdpSocket
-	reliableUdp     *ReliableUdp
-	sendSeq         int64
-	retransCount    int
-	retransInterval int64
-	readTimeout     int64
-	dstAddr         net.UDPAddr
+	sendBuf            SendBuff
+	recvBuf            RecvBuff
+	sessionId          int64
+	dIp                string
+	dPort              int
+	recv               udpsocket.UdpRecv
+	udpSocket          *udpsocket.UdpSocket
+	reliableUdp        *ReliableUdp
+	sendSeq            int64
+	retransCount       int
+	retransInterval    int64
+	readTimeout        int64
+	dstAddr            net.UDPAddr
+	lossRate           int
+	retransmissionRate int
+	statSendCount      int64
+	statAckCount       int64
 }
 
 func (s *UdpSession) Init(sessionId int64, dIp string, dPort int, udpSocket *udpsocket.UdpSocket, reliableUdp *ReliableUdp) {
@@ -37,7 +41,10 @@ func (s *UdpSession) Init(sessionId int64, dIp string, dPort int, udpSocket *udp
 	s.recvBuf.Init(s)
 	s.udpSocket = udpSocket
 	s.dstAddr = net.UDPAddr{IP: net.ParseIP(dIp), Port: dPort}
-
+	s.lossRate = 0
+	s.retransmissionRate = 0
+	s.statSendCount = 0
+	s.statAckCount = 0
 }
 
 func (s *UdpSession) Close() {
@@ -58,6 +65,7 @@ func (s *UdpSession) GetSid() int64 {
 
 func (s *UdpSession) OnAck(seq int64) {
 	s.sendBuf.Delete(seq)
+	s.statAckCount += 1
 }
 
 func (s *UdpSession) SetMaxRetransmissionCount(count int) {
@@ -106,6 +114,8 @@ func (s *UdpSession) SendData(b []byte) {
 	fclog.DEBUG("SendData seq++")
 
 	s.udpSocket.SendData(encryptData, &s.dstAddr)
+
+	s.statSendCount += 1
 }
 
 func (s *UdpSession) SendAck(seq int64) {
@@ -211,4 +221,18 @@ func (s *UdpSession) ReadCheck() (b []byte, bRead bool) {
 func (s *UdpSession) ReadTimeoutCheck() (b []byte, bRead bool) {
 	curTs := time.Now().UnixNano()
 	return s.recvBuf.GetTimeoutData(curTs, s.readTimeout*1000000)
+}
+
+func (s *UdpSession) GetLossrate() int {
+
+	s.lossRate = int((1 - float64(s.statAckCount)/float64(s.statSendCount+s.sendBuf.GetRetransCount())) * 100)
+	fclog.DEBUG("Ackcount=%d statSendCount=%d lossrate=%d", s.statAckCount, s.statSendCount+s.sendBuf.GetRetransCount(), s.lossRate)
+
+	return s.lossRate
+}
+
+func (s *UdpSession) GetRetransmissionrate() int {
+	s.retransmissionRate = int((float64(s.sendBuf.GetRetransCount()) / float64(s.statSendCount)) * 100)
+	fclog.DEBUG("retrans cout=%d sendcount=%d retransrate=%d", s.sendBuf.GetRetransCount(), s.statSendCount, s.retransmissionRate)
+	return s.retransmissionRate
 }

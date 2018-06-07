@@ -5,13 +5,26 @@ import "net"
 import "github.com/woodywanghg/gofclog"
 import "github.com/golang/protobuf/proto"
 import "rudpproto"
+import "net/http"
 import "time"
 import "sync"
+import "encoding/json"
 
 const (
 	UDP_SESSION_RS_OK  = 0
 	UDP_SESSION_RS_ERR = 1
 )
+
+type StatItem struct {
+	SessionId          int `json:"sessionid"`
+	Lossrate           int `json:"Lossrate"`
+	Retransmissionrate int `json:"retransmissionrate"`
+}
+
+type StatInfo struct {
+	Count    int        `json:"count"`
+	Sessions []StatItem `json:"sessions"`
+}
 
 type ReliableUdp struct {
 	encrypt     RudpEncrypt
@@ -21,6 +34,7 @@ type ReliableUdp struct {
 	udpInter    RudpInter
 	readChan    chan bool
 	readTimeOut int
+	statData    []byte
 }
 
 var rudp *ReliableUdp = nil
@@ -403,4 +417,57 @@ func (r *ReliableUdp) SendData(sessionId int64, b []byte) {
 
 func (r *ReliableUdp) GetEncrypt() *RudpEncrypt {
 	return &r.encrypt
+}
+
+func (r *ReliableUdp) Stat(addr string) {
+	go r.StatCalc()
+	go r.StatRun(addr)
+}
+
+func (r *ReliableUdp) StatRun(addr string) {
+	http.HandleFunc("/stat", r.StatFunc)
+	http.ListenAndServe(addr, nil)
+}
+
+func (r *ReliableUdp) StatCalc() {
+
+	for {
+
+		time.Sleep(1000000 * 5000)
+
+		if len(r.sessionMap) > 0 {
+
+			r.lock.Lock()
+
+			var statInfo StatInfo
+			statInfo.Count = len(r.sessionMap)
+			statInfo.Sessions = make([]StatItem, 0)
+
+			for k, session := range r.sessionMap {
+				var item StatItem
+				item.SessionId = int(k)
+				item.Lossrate = session.GetLossrate()
+				item.Retransmissionrate = session.GetRetransmissionrate()
+				statInfo.Sessions = append(statInfo.Sessions, item)
+			}
+
+			data, err := json.Marshal(statInfo)
+			if err == nil {
+				r.statData = data
+			} else {
+				fclog.ERROR("Marshal json err! err=%s", err.Error())
+			}
+
+			r.lock.Unlock()
+
+		} else {
+			statData := `{"count":0, "sessions":[]}`
+			r.statData = []byte(statData)
+		}
+
+	}
+}
+
+func (r *ReliableUdp) StatFunc(w http.ResponseWriter, req *http.Request) {
+	w.Write(r.statData)
 }

@@ -44,6 +44,7 @@ func main() {
 
 	clientIp := iniObj.ReadString("CLIENT", "ip", "error")
 	clientPort := iniObj.ReadInt("CLIENT", "port", -1)
+	statAddr := iniObj.ReadString("STAT", "addr", "error")
 
 	var obj = rudp.GetReliableUdp()
 	obj.Init()
@@ -56,6 +57,8 @@ func main() {
 			return
 		}
 	}
+
+	obj.Stat(statAddr)
 
 	var objTest TestServer
 	obj.SetUdpInterface(&objTest)

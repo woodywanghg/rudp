@@ -10,11 +10,13 @@ type SendBuffItem struct {
 }
 
 type SendBuff struct {
-	udpSession *UdpSession
-	seqMap     map[int64]*SendBuffItem
+	udpSession   *UdpSession
+	seqMap       map[int64]*SendBuffItem
+	retransCount int64
 }
 
 func (s *SendBuff) Init(udpSession *UdpSession) {
+	s.retransCount = 0
 	s.udpSession = udpSession
 	s.seqMap = make(map[int64]*SendBuffItem, 100)
 }
@@ -56,6 +58,7 @@ func (s *SendBuff) Check() {
 		fclog.DEBUG("curTs=%d v.ts=%d sub=%d interval=%d", curTs, v.ts, curTs-v.ts, s.udpSession.GetRetransInterval())
 		if curTs-v.ts >= s.udpSession.GetRetransInterval() {
 
+			s.retransCount += 1
 			v.retrans += 1
 			s.udpSession.SendRetransData(v.data)
 			fclog.DEBUG("Ack timeout retransmission interval=%d seq=%d retrans count=%d", s.udpSession.GetRetransInterval(), seq, v.retrans)
@@ -69,4 +72,8 @@ func (s *SendBuff) Check() {
 		}
 	}
 	fclog.DEBUG("Check out......")
+}
+
+func (s *SendBuff) GetRetransCount() int64 {
+	return s.retransCount
 }
