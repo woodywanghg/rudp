@@ -25,3 +25,7 @@
 
 ## Message sequence
 ![message sequence](https://github.com/woodywanghg/gitpicture/blob/master/msgsequence.svg)
+
+## Message retransmit sequence
+![message sequence](https://github.com/woodywanghg/gitpicture/blob/master/sequenceretransmit.svg)
+
