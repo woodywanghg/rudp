@@ -41,9 +41,6 @@ func main() {
 
 	serverIp := iniObj.ReadString("SERVER", "ip", "error")
 	serverPort := iniObj.ReadInt("SERVER", "port", -1)
-
-	clientIp := iniObj.ReadString("CLIENT", "ip", "error")
-	clientPort := iniObj.ReadInt("CLIENT", "port", -1)
 	statAddr := iniObj.ReadString("STAT", "addr", "error")
 
 	var obj = rudp.GetReliableUdp()
@@ -62,26 +59,9 @@ func main() {
 
 	var objTest TestServer
 	obj.SetUdpInterface(&objTest)
-	var sid int64 = 0
-	var err error = nil
-	fclog.DEBUG("clientip=%s port=%d", clientIp, clientPort)
-	if clientIp != "error" && clientPort != -1 {
-		sid, err = obj.CreateSession(clientIp, clientPort)
-		fclog.DEBUG("CreateSession id=%d", sid)
-		if err != nil {
-			os.Exit(0)
-			return
-		}
-	}
 
-	index := 1000
 	for {
-		time.Sleep(1000000 * 20)
-		if sid != 0 {
-			buff := fmt.Sprintf("index=%d", index)
-			index += 1
-			obj.SendData(sid, []byte(buff))
-		}
-
+		time.Sleep(1000000 * 5000)
+		//TODO
 	}
 }
