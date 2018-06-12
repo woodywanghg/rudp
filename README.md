@@ -19,3 +19,6 @@
 | **Status monitor**|http interface. loss rate, retransmission statistics|
 | **Bin protocol**|bin protocol, packet by protocolbuf|
 | **UDP socket**|golang udp socket|
+
+## Message sequence
+![message sequence](https://github.com/woodywanghg/gitpicture/blob/master/msgsequence.svg)
