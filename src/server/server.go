@@ -34,7 +34,7 @@ func main() {
 	fclog.Init(true, true, "rudp.log", 1048576, fclog.LEVEL_DEBUG)
 
 	var iniObj goini.IniFile
-	if !iniObj.Init("./demo.ini") {
+	if !iniObj.Init("./server.ini") {
 		os.Exit(0)
 		return
 	}

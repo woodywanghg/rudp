@@ -225,14 +225,22 @@ func (s *UdpSession) ReadTimeoutCheck() (b []byte, bRead bool) {
 
 func (s *UdpSession) GetLossrate() int {
 
-	s.lossRate = int((1 - float64(s.statAckCount)/float64(s.statSendCount+s.sendBuf.GetRetransCount())) * 100)
+	if s.statSendCount == 0 {
+		s.lossRate = 0
+	} else {
+		s.lossRate = int((1 - float64(s.statAckCount)/float64(s.statSendCount+s.sendBuf.GetRetransCount())) * 100)
+	}
 	fclog.DEBUG("Ackcount=%d statSendCount=%d lossrate=%d", s.statAckCount, s.statSendCount+s.sendBuf.GetRetransCount(), s.lossRate)
 
 	return s.lossRate
 }
 
 func (s *UdpSession) GetRetransmissionrate() int {
-	s.retransmissionRate = int((float64(s.sendBuf.GetRetransCount()) / float64(s.statSendCount)) * 100)
+	if s.statSendCount == 0 {
+		s.retransmissionRate = 0
+	} else {
+		s.retransmissionRate = int((float64(s.sendBuf.GetRetransCount()) / float64(s.statSendCount)) * 100)
+	}
 	fclog.DEBUG("retrans cout=%d sendcount=%d retransrate=%d", s.sendBuf.GetRetransCount(), s.statSendCount, s.retransmissionRate)
 	return s.retransmissionRate
 }

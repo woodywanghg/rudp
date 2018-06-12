@@ -1,2 +1,19 @@
-# rudp
-Reliable udp proto
+```
+  ________  ___  ___  ________  ________
+|\   __  \|\  \|\  \|\   ___ \|\   __  \
+\ \  \|\  \ \  \\\  \ \  \_|\ \ \  \|\  \
+ \ \   _  _\ \  \\\  \ \  \ \\ \ \   ____\
+  \ \  \\  \\ \  \\\  \ \  \_\\ \ \  \___|
+   \ \__\\ _\\ \_______\ \_______\ \__\
+    \|__|\|__|\|_______|\|_______|\|__|
+    
+```
+## Reliable udp proto
+![Overview](https://github.com/woodywanghg/gitpicture/blob/master/overview_ss.png)
+
+## Overview
+> ```Application data:``` the data that you want to transmint
+> ```Reliable UDP```:     loss packet check, retransmission, and so on
+> ```Status monitor```:   http interface. loss rate, retransmission statistics 
+> ```Bin protocol":       bin protocol, packet by protocolbuf 
+> ```UDP socket:          golang udp socket
